@@ -1,1 +1,10 @@
 name = Views Filters Number results
+description =  Add nodes count by term reference in views exposed filter
+core = 7.x
+package = Views
+version = 7.x-1.0
+
+dependencies[] = views
+
+files[] = views_filter_term_nodes_count.views.inc
+files[] = views_handler_filter_term_node_tid_with_node_count.inc

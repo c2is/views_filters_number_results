@@ -1,0 +1,15 @@
+<?php
+/**
+ * @file
+ * Enable module views_filter_term_nodes
+ */
+
+/**
+ * Implementation of hook_views_api().
+ */
+function views_filters_number_results_views_api() {
+    return array(
+        'api' => 3,
+    );
+
+}
