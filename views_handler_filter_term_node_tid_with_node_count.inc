@@ -27,7 +27,7 @@ class views_handler_filter_term_node_tid_with_node_count extends views_handler_f
                 $terms_ids = array_keys($form['value']['#options']);
 
                 // Retrieve node count by term reference
-                $nodes_count = $this->_get_nodes_count_by_terms($terms_ids, $content_types);
+                $nodes_count = $this->_get_nodes_count_by_terms($terms_ids, $content_types, $this->options['id']);
 
                 // Add node count after term name
                 foreach ($form['value']['#options'] as $tid => $value) {
@@ -44,45 +44,51 @@ class views_handler_filter_term_node_tid_with_node_count extends views_handler_f
      * @param $content_types    array()
      * @return array retrieve node count by term reference
      */
-    protected function _get_nodes_count_by_terms($terms_ids, $content_types) {
+    protected function _get_nodes_count_by_terms($terms_ids, $content_types, $field_id) {
 
         global $language;
         $langcode = $language->language;
         $view_id = $this->view->vid;
 
-        $data = &drupal_static(__FUNCTION__, NULL);
+        // Generation du CID du cache
+        $cid = implode(':', array(
+            '_get_nodes_count_by_terms',
+            $field_id,
+            $langcode,
+            $this->view->vid,
+            $this->view->current_display
+        ));
 
-        if (!isset($data)) {
-            $cache = cache_get("_get_nodes_count_by_terms:$langcode:$view_id");
-            // Check if the cache is up to dat
-            if (isset($cache->expire) && $cache->expire > REQUEST_TIME) {
-                $data = $cache->data;
-            }
-            else {
-                $data = array();
-
-                // Select node count by terms in this views content type
-                $query = db_select('taxonomy_index', 'ti');
-                $query->join('node', 'n', 'ti.nid = n.nid');
-                $query->addExpression('COUNT(*)', 'count');
-                $query->fields('ti', array('tid'))
-                    ->condition('n.status', 1)
-                    ->condition('ti.tid', $terms_ids, 'IN')
-                    ->condition('n.type', $content_types, 'IN')
-                    ->groupBy('tid');
-
-
-                $result = $query->execute();
-
-                // Add node count for every term id
-                foreach ($result as $item) {
-                    $data[$item->tid] = $item->count;
-                }
-
-                // Set result in cache
-                cache_set("_get_nodes_count_by_terms:$langcode:$view_id", $data, 'cache', time() + (60*60*2));
-            }
+        $cache = cache_get($cid);
+        // Check if the cache is up to dat
+        if (isset($cache->expire) && $cache->expire > REQUEST_TIME) {
+            $data = $cache->data;
         }
+        else {
+            $data = array();
+
+            // Select node count by terms in this views content type
+            $query = db_select('taxonomy_index', 'ti');
+            $query->join('node', 'n', 'ti.nid = n.nid');
+            $query->addExpression('COUNT(*)', 'count');
+            $query->fields('ti', array('tid'))
+                ->condition('n.status', 1)
+                ->condition('ti.tid', $terms_ids, 'IN')
+                ->condition('n.type', $content_types, 'IN')
+                ->groupBy('tid');
+
+
+            $result = $query->execute();
+
+            // Add node count for every term id
+            foreach ($result as $item) {
+                $data[$item->tid] = $item->count;
+            }
+
+            // Set result in cache
+            cache_set($cid, $data, 'cache', time() + (60*60*2));
+        }
+
         return $data;
     }
 
